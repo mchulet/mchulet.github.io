@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<!-- three.js library -->
+<script src='js/three.min.js'></script>
+<script src='js/loaders/MTLLoader.js'></script>
+<script src='js/loaders/OBJLoader.js'></script>
+<script src='js/loaders/ColladaLoader.js'></script>
+<script src='js/loaders/FBXLoader.js'></script>
+<script src="js/ar.min.js"></script>
+<script>THREEx.ArToolkitContext.baseURL = '../'</script>
+
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
+
+<script>
+	//////////////////////////////////////////////////////////////////////////////////
+	//		Init
+	//////////////////////////////////////////////////////////////////////////////////
+
+	var container;
+	var camera, scene, renderer, clock;
+	var mouseX = 0, mouseY = 0;
+	var windowHalfX = window.innerWidth / 2;
+	var windowHalfY = window.innerHeight / 2;
+	var onRenderFcts= [];
+
+//animation	
+	var attackAction;
+	var attackWeight;	
+	var actions;
+	var mesh, skeleton, mixer;	
+
+	//camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+	//camera.position.z = 250;
+
+	camera = new THREE.Camera();
+
+	// scene
+
+	scene = new THREE.Scene();
+	clock = new THREE.Clock();
+	
+	scene.add(camera);
+
+	//var ambient = new THREE.AmbientLight( 0x101030 );
+	//scene.add( ambient );
+
+	var directionalLight = new THREE.DirectionalLight( 0xffeedd );
+	directionalLight.position.set( 0, 0, 1 );
+	scene.add( directionalLight );
+
+/* Using Texture 
+	// texture
+
+	var manager = new THREE.LoadingManager();
+	manager.onProgress = function ( item, loaded, total ) {
+
+		console.log( item, loaded, total );
+
+	};
+
+	var texture = new THREE.Texture();
+
+	var onProgress = function ( xhr ) {
+		if ( xhr.lengthComputable ) {
+			var percentComplete = xhr.loaded / xhr.total * 100;
+			console.log( Math.round(percentComplete, 2) + '% downloaded' );
+		}
+	};
+
+	var onError = function ( xhr ) {};
+
+
+	var imgLoader = new THREE.ImageLoader( manager );
+	imgLoader.load( 'data/Skin_Section_obj/Skin_Section_diff.png', function ( image ) {
+
+		texture.image = image;
+		texture.needsUpdate = true;
+
+	} );
+	// model
+
+	var loadedObj;
+	var objLoader = new THREE.OBJLoader( manager );
+	//objLoader.texturePath = 'data/Skin_Section_obj/Skin_Section_diff.png';
+	//objLoader.setTexturePath('data/Skin_Section_obj/Skin_Section_diff.png');
+
+	objLoader.load( 'data/Skin_Section_obj/Skin_Section.obj', function ( object ) {
+
+		object.traverse( function ( child ) {
+
+			if ( child instanceof THREE.Mesh ) {
+
+				child.material.map = texture;
+				//child.scale.set(0.5,0.5,0.5);
+			}
+
+		} );
+
+		object.position.y = 0;
+		object.scale.x = object.scale.y = object.scale.z = 0.005;
+		
+		loadedObj = object;
+		scene.add( object );
+
+	}, onProgress, onError );
+*/
+
+/*  Skeleton Loading */
+	//var objUrl = "data/Skin_Section_obj/";
+	//var objName = "Skin_Section";
+	var objUrl = "data/skeleton/";
+	var objName = "clastique";
+
+	var mesh = null;
+	var mtlLoader = new THREE.MTLLoader();
+	mtlLoader.setTexturePath( objUrl );
+	mtlLoader.setPath( objUrl );
+	//var material = new THREE.MeshPhongMaterial( { map: THREE.ImageUtils.loadTexture('images/crate.jpg') } );
+	mtlLoader.load(objName + ".mtl", function( materials ) {
+
+	materials.preload();
+
+	var objLoader = new THREE.OBJLoader();
+	objLoader.setMaterials( materials );
+	objLoader.setPath( objUrl );
+	objLoader.load(objName + ".obj", function ( object ) {
+
+			mesh = object;
+			//mesh.position.x = 10;
+			//mesh.position.y = 10;
+			mesh.scale.x = mesh.scale.y = mesh.scale.z = 0.002;			
+			scene.add( mesh );
+		} );
+	} );
+//Skeleton: End
+
+//Collada
+	var loader = new THREE.ColladaLoader();
+	loader.options.convertUpAxis = true;
+	loader.load( 'data/Low-Poly-Spider/Spider.dae', function ( collada ) {
+
+		var object = collada.scene;
+		object.position.x = 0.5;
+		//object.position.y = 1;
+		
+		mixer = new THREE.AnimationMixer( object );
+
+		object.traverse( function ( child ) {
+
+			if ( child instanceof THREE.SkinnedMesh ) {
+
+				clip = THREE.AnimationClip.parseAnimation( child.geometry.animation, child.geometry.bones );
+				//mixer.clipAction( 'Attack' ).play();
+				mixer.clipAction( clip, child ).play();
+
+			/*
+				mixer = new THREE.AnimationMixer( collada.scene );
+				attackAction = mixer.clipAction( 'Attack' );
+				actions = [ attackAction ];
+
+				activateAllActions();
+				animate();
+			*/				
+			}
+		} );
+
+		object.scale.x = object.scale.y = object.scale.z = 0.08;			
+		scene.add( object );
+	},
+	// Function called when download progresses
+	function ( xhr ) {
+		console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+	}
+  );
+
+//FBX
+/* 
+    var manager = new THREE.LoadingManager()
+    manager.onProgress = function(item, loaded, total) {
+      console.log(item, loaded, total)
+    };
+
+	//'data/fbx/xsi_man_skinning.fbx'
+	//'data/Low-Poly-Spider/Spider.fbx',
+
+    var loader = new THREE.FBXLoader(manager)
+    loader.load(
+      'data/fbx/xsi_man_skinning.fbx',
+      function(object) {
+        scene.children.push(object);
+		//scene.add( object );
+/
+		mixer = new THREE.AnimationMixer( mesh );
+		attackAction = mixer.clipAction( 'Attack' );
+		//walkAction = mixer.clipAction( 'walk' );
+		//runAction = mixer.clipAction( 'run' );
+		actions = [ attackAction ];
+
+		activateAllActions();
+		animate();
+/		
+      }
+    );//load
+*/
+
+function activateAllActions() {
+
+	setWeight( attackAction, settings[ 'modify Attack weight' ] );
+	//setWeight( walkAction, settings[ 'modify walk weight' ] );
+	//setWeight( runAction, settings[ 'modify run weight' ] );
+
+	actions.forEach( function ( action ) {
+		action.play();
+	} );
+}
+
+function animate() {
+	requestAnimationFrame(animate);
+	render();
+}
+
+function render() {
+
+	var delta = clock.getDelta();
+
+	if ( mixer !== undefined ) {
+		mixer.update( delta );
+	}
+
+	renderer.render( scene, camera );
+}
+
+/* Animated Spider: END */
+
+
+	// init renderer
+	var renderer = new THREE.WebGLRenderer({
+		antialias: true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	renderer.setSize( 640, 480 );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+	animate();
+
+	////////////////////////////////////////////////////////////////////////////////
+	//          handle arToolkitSource
+	////////////////////////////////////////////////////////////////////////////////
+
+	var arToolkitSource = new THREEx.ArToolkitSource({
+		// to read from the webcam 
+		sourceType : 'webcam',
+		
+		// // to read from an image
+		// sourceType : 'image',
+		// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/images/img.jpg',		
+
+		// to read from a video
+		// sourceType : 'video',
+		// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/videos/headtracking.mp4',		
+	})
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	})
+	
+	// handle resize
+	window.addEventListener('resize', function(){
+		onResize()
+	})
+
+	function onResize() {
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if( arToolkitContext.arController !== null ){
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+		}	
+	}
+	////////////////////////////////////////////////////////////////////////////////
+	//          initialize arToolkitContext
+	////////////////////////////////////////////////////////////////////////////////
+	
+
+	// create atToolkitContext
+	var arToolkitContext = new THREEx.ArToolkitContext({
+		//cameraParametersUrl: THREEx.ArToolkitContext.baseURL + 'AR.js-master/data/data/camera_para.dat',
+		cameraParametersUrl: 'data/camera_para.dat',
+		detectionMode: 'mono',
+	})
+	// initialize it
+	arToolkitContext.init(function onCompleted(){
+		// copy projection matrix to camera
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	})
+
+	// update artoolkit on every frame
+	onRenderFcts.push(function(){
+		if( arToolkitSource.ready === false )	return
+
+		arToolkitContext.update( arToolkitSource.domElement )
+		
+		// update scene.visible if the marker is seen
+		scene.visible = camera.visible
+	})
+		
+	////////////////////////////////////////////////////////////////////////////////
+	//          Create a ArMarkerControls
+	////////////////////////////////////////////////////////////////////////////////
+	
+	// init controls for camera
+	var markerControls = new THREEx.ArMarkerControls(arToolkitContext, camera, {
+		type : 'pattern',
+		//patternUrl : 'data/patt.hiro',
+		patternUrl : 'data/bz.patt',
+		// patternUrl : THREEx.ArToolkitContext.baseURL + 'AR.js-master/data/data/patt.hiro',
+		// patternUrl : THREEx.ArToolkitContext.baseURL + '../data/data/patt.kanji',
+		// as we controls the camera, set changeMatrixMode: 'cameraTransformMatrix'
+		changeMatrixMode: 'cameraTransformMatrix'
+	})
+	// as we do changeMatrixMode: 'cameraTransformMatrix', start with invisible scene
+	scene.visible = false
+
+	//////////////////////////////////////////////////////////////////////////////////
+	//		add an object in the scene
+	//////////////////////////////////////////////////////////////////////////////////
+
+/* Mahesh
+	// add a torus knot	
+	var geometry	= new THREE.CubeGeometry(1,1,1);
+	var material	= new THREE.MeshNormalMaterial({
+		transparent : true,
+		opacity: 0.5,
+		side: THREE.DoubleSide
+	}); 
+	var mesh	= new THREE.Mesh( geometry, material );
+	mesh.position.y	= geometry.parameters.height/2
+	scene.add( mesh );
+	
+	var geometry	= new THREE.TorusKnotGeometry(0.3,0.1,64,16);
+	var material	= new THREE.MeshNormalMaterial(); 
+	var mesh	= new THREE.Mesh( geometry, material );
+	mesh.position.y	= 0.5
+	scene.add( mesh );
+	
+	onRenderFcts.push(function(delta){
+		mesh.rotation.x += Math.PI*delta
+	})
+*/
+
+	//////////////////////////////////////////////////////////////////////////////////
+	//		render the whole thing on the page
+	//////////////////////////////////////////////////////////////////////////////////
+
+	// render the scene
+	onRenderFcts.push(function(){
+		renderer.render( scene, camera );
+	})
+
+	// run the rendering loop
+	var lastTimeMsec= null
+	requestAnimationFrame(function animate(nowMsec) {
+		// keep looping
+		requestAnimationFrame( animate );
+		// measure time
+		lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+		var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+		lastTimeMsec	= nowMsec
+		// call each update function
+		onRenderFcts.forEach(function(onRenderFct){
+			onRenderFct(deltaMsec/1000, nowMsec/1000)
+		})
+	})
+</script></body>

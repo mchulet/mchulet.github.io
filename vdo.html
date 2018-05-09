@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+<script src='js/three.min.js'></script>
+<script src="js/ar.min.js"></script>
+
+<script>THREEx.ArToolkitContext.baseURL = '../'</script>
+
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
+
+<script>
+	//////////////////////////////////////////////////////////////////////////////////
+	//		Init
+	//////////////////////////////////////////////////////////////////////////////////
+
+	var container;
+	var camera, scene, renderer, clock;
+	var mouseX = 0, mouseY = 0;
+	var windowHalfX = window.innerWidth / 2;
+	var windowHalfY = window.innerHeight / 2;
+	var onRenderFcts= [];
+
+//animation	
+	var attackAction;
+	var attackWeight;	
+	var actions;
+	var mesh, skeleton, mixer;	
+
+	//camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+	//camera.position.z = 250;
+
+	camera = new THREE.Camera();
+
+	// scene
+	scene = new THREE.Scene();
+	clock = new THREE.Clock();
+	scene.add(camera);
+
+	var directionalLight = new THREE.DirectionalLight( 0xffeedd );
+	directionalLight.position.set( 0, 0, 1 );
+	scene.add( directionalLight );
+
+	var video = document.createElement('video');
+	video.autoplay = false;
+	video.src    = 'data/vdo.mp4';
+
+	videoTexture = new THREE.Texture(video);
+	videoTexture.minFilter = THREE.LinearFilter;
+	videoTexture.magFilter = THREE.LinearFilter;
+	videoTexture.format = THREE.RGBFormat;
+
+	var spriteMaterial = new THREE.SpriteMaterial( { map: videoTexture, color: 0xffffff } );
+	var sprite = new THREE.Sprite( spriteMaterial );
+	scene.add( sprite );
+
+	function render() {
+		if( video.readyState === video.HAVE_ENOUGH_DATA ){
+			videoTexture.needsUpdate = true;
+		}
+
+		renderer.render(scene, camera);
+		requestAnimationFrame(render);
+	}
+
+	// init renderer
+	var renderer = new THREE.WebGLRenderer({
+		antialias: true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	renderer.setSize( 640, 480 );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+
+	render();
+
+	////////////////////////////////////////////////////////////////////////////////
+	//          handle arToolkitSource
+	////////////////////////////////////////////////////////////////////////////////
+	var arToolkitSource = new THREEx.ArToolkitSource({
+		// to read from the webcam 
+		sourceType : 'webcam',
+		
+		// // to read from an image
+		// sourceType : 'image',
+		// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/images/img.jpg',		
+
+		// to read from a video
+		// sourceType : 'video',
+		// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/videos/headtracking.mp4',		
+	})
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	})
+	
+	// handle resize
+	window.addEventListener('resize', function(){
+		onResize()
+	})
+
+	function onResize() {
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if( arToolkitContext.arController !== null ){
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+		}	
+	}
+	////////////////////////////////////////////////////////////////////////////////
+	//          initialize arToolkitContext
+	////////////////////////////////////////////////////////////////////////////////
+	
+
+	// create atToolkitContext
+	var arToolkitContext = new THREEx.ArToolkitContext({
+		//cameraParametersUrl: THREEx.ArToolkitContext.baseURL + 'AR.js-master/data/data/camera_para.dat',
+		cameraParametersUrl: 'data/camera_para.dat',
+		detectionMode: 'mono',
+	})
+
+	// initialize it
+	arToolkitContext.init(function onCompleted(){
+		// copy projection matrix to camera
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	})
+
+	// update artoolkit on every frame
+	onRenderFcts.push(function(){
+		if( arToolkitSource.ready === false )	return
+
+		arToolkitContext.update( arToolkitSource.domElement )
+		
+		console.log('**** camera.visible: ' + camera.visible);
+
+		if(camera.visible)
+			video.play();
+		else if(!camera.visible)
+			video.pause();
+
+		// update scene.visible if the marker is seen
+		scene.visible = camera.visible;
+	})
+		
+	////////////////////////////////////////////////////////////////////////////////
+	//          Create a ArMarkerControls
+	////////////////////////////////////////////////////////////////////////////////
+	
+	// init controls for camera
+	var markerControls = new THREEx.ArMarkerControls(arToolkitContext, camera, {
+		type : 'pattern',
+		//patternUrl : 'AR.js-master/data/data/patt.hiro',
+		patternUrl : 'data/bz.patt',
+		// patternUrl : THREEx.ArToolkitContext.baseURL + 'AR.js-master/data/data/patt.hiro',
+		// patternUrl : THREEx.ArToolkitContext.baseURL + '../data/data/patt.kanji',
+		// as we controls the camera, set changeMatrixMode: 'cameraTransformMatrix'
+		changeMatrixMode: 'cameraTransformMatrix'
+	})
+	// as we do changeMatrixMode: 'cameraTransformMatrix', start with invisible scene
+	scene.visible = false;
+	
+
+	//if(document.querySelector("a-marker").object3D.visible == true)
+	markerControls.addEventListener('markerFound', function(event) {
+		console.log('**** Marker Found');
+	});
+/*
+	markerControls.addEventListener('markerVisible', function(event) {
+		console.log('**** markerVisible');
+	});
+
+	markerControls.addEventListener('becameVisible', function(event) {
+		console.log('**** becameVisible');
+	});
+
+	markerControls.addEventListener('becameUnVisible', function(event) {
+		console.log('**** becameUnVisible');
+	});
+*/
+
+	//////////////////////////////////////////////////////////////////////////////////
+	//		render the whole thing on the page
+	//////////////////////////////////////////////////////////////////////////////////
+
+	// render the scene
+	onRenderFcts.push(function(){
+		renderer.render( scene, camera );
+	})
+
+	// run the rendering loop
+	var lastTimeMsec= null
+	requestAnimationFrame(function animate(nowMsec) {
+		// keep looping
+		requestAnimationFrame( animate );
+		// measure time
+		lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+		var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+		lastTimeMsec	= nowMsec
+		// call each update function
+		onRenderFcts.forEach(function(onRenderFct) {
+			onRenderFct(deltaMsec/1000, nowMsec/1000)
+		})
+	})
+</script></body>
