@@ -105,7 +105,7 @@
 	}, onProgress, onError );
 */
 
-/*  Skeleton Loading */
+/*  Skeleton Loading
 	//var objUrl = "data/Skin_Section_obj/";
 	//var objName = "Skin_Section";
 	var objUrl = "data/skeleton/";
@@ -133,7 +133,9 @@
 		} );
 	} );
 //Skeleton: End
+*/
 
+/*
 //Collada
 	var loader = new THREE.ColladaLoader();
 	loader.options.convertUpAxis = true;
@@ -160,7 +162,7 @@
 
 				activateAllActions();
 				animate();
-			*/				
+			*				
 			}
 		} );
 
@@ -172,9 +174,9 @@
 		console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
 	}
   );
+*/
 
 //FBX
-/* 
     var manager = new THREE.LoadingManager()
     manager.onProgress = function(item, loaded, total) {
       console.log(item, loaded, total)
@@ -185,11 +187,11 @@
 
     var loader = new THREE.FBXLoader(manager)
     loader.load(
-      'data/fbx/xsi_man_skinning.fbx',
+      'data/Low-Poly-Spider/Spider.fbx',
       function(object) {
         scene.children.push(object);
 		//scene.add( object );
-/
+//
 		mixer = new THREE.AnimationMixer( mesh );
 		attackAction = mixer.clipAction( 'Attack' );
 		//walkAction = mixer.clipAction( 'walk' );
@@ -198,10 +200,9 @@
 
 		activateAllActions();
 		animate();
-/		
+//		
       }
     );//load
-*/
 
 function activateAllActions() {
 
